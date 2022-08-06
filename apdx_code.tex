@@ -1,0 +1,885 @@
+
+% This is an example of how you would use tgrind to include an example
+% of source code; it is commented out in this template since the code
+% example file does not exist. To use it, you need to remove the '%' on the
+% beginning of the line, and insert your own information in the call.
+%
+%\tagrind[htbp]{code/pmn.s.tex}{Code sample}{opt:pmn}
+
+
+\chapter{MATLAB Source Code Excerpt} \label{apdx:code}
+
+All code for this thesis work is written in MATLAB and is version controlled in GitHub. Please refer to \href{https://github.com/gcfc/fiber-draw}{\underline{this GitHub repository}} (\href{https://github.com/gcfc/fiber-draw}{https://github.com/gcfc/fiber-draw}) for the complete source code. 
+
+Below are some meaningful excerpts demonstrating various key components mentioned throughout the thesis. 
+
+\section{Architecture Exploration for Plant Dynamics}
+
+Filename: $\texttt{architecture\_experiment.m}$
+\begin{lstlisting}
+load('alldatatrain\all_data_processed_4in_1out_yremove125.mat', 'Xdata', 'Ydata', 'x_train', 'y_train', 'x_test', 'y_test', 'filenames')   
+
+simple_lstm = create_simple_lstm(x_train, y_train);
+[simple_lstm, simple_lstm_info] = train_lstm(simple_lstm, x_train, y_train, x_test, y_test, 64);
+
+deep_lstm = create_deep_lstm(x_train, y_train);
+[deep_lstm, deep_lstm_info] = train_lstm(deep_lstm, x_train, y_train, x_test, y_test, 16);
+
+simple_bilstm = create_simple_bilstm(x_train, y_train);
+[simple_bilstm, simple_bilstm_info] = train_lstm(simple_bilstm, x_train, y_train, x_test, y_test, 16);
+
+side_by_side_3_lstm = create_3_side_by_side_lstm(x_train, y_train);
+[side_by_side_3_lstm, side_by_side_3_lstm_info] = train_lstm(side_by_side_3_lstm, x_train, y_train, x_test, y_test, 32);
+
+save('results/architecture_experiment.mat', 'simple_lstm', 'simple_lstm_info', 'deep_lstm', 'deep_lstm_info', 'simple_bilstm', 'simple_bilstm_info', 'side_by_side_3_lstm', 'side_by_side_3_lstm_info');
+\end{lstlisting}
+
+Function: $\texttt{train\_lstm.m}$
+\begin{lstlisting}
+
+function [net, info] = train_lstm(net, x_train, y_train, x_test, y_test, miniBatchSize)
+
+maxEpochs = 250;
+
+options = trainingOptions('adam', ...
+            'InitialLearnRate',         0.01, ...
+            'OutputNetwork',            'best-validation-loss', ...
+            'MaxEpochs',                maxEpochs, ...
+            'MiniBatchSize',            miniBatchSize, ...
+            'GradientThreshold',        10, ...
+            'SequenceLength',           'longest', ...  % padding
+            'SequencePaddingDirection', 'right', ...   
+            'SequencePaddingValue',     0, ...               
+            'Shuffle',                  'once', ...
+            'Plots',                    'training-progress',...
+            'LearnRateSchedule',        'piecewise',...
+            'LearnRateDropPeriod',      100,... 
+            'Verbose',                  1, ...
+            'ValidationData',           {x_test, y_test});
+[net, info] = trainNetwork(x_train,y_train,net,options);
+end
+\end{lstlisting}
+
+Function: $\texttt{create\_simple\_lstm.m}$
+\begin{lstlisting}
+function [Networklayers] = create_simple_lstm(xTrain, yTrain)
+
+[featureDimension,~ = size(xTrain{1});
+[numResponses, ~]   = size(yTrain{1});
+
+Networklayers = [sequenceInputLayer(featureDimension, 'Normalization','zscore') ...
+    lstmLayer(128) ...
+    fullyConnectedLayer(numResponses) ...
+    regressionLayer];
+end
+\end{lstlisting}
+
+Function: $\texttt{create\_simple\_bilstm.m}$
+\begin{lstlisting}
+function [Networklayers] = create_simple_bilstm(xTrain, yTrain)
+
+[featureDimension, ~] = size(xTrain{1});
+[numResponses, ~]     = size(yTrain{1});
+
+Networklayers = [sequenceInputLayer(featureDimension, 'Normalization','zscore') ...
+    bilstmLayer(128) ...
+    fullyConnectedLayer(numResponses) ...
+    regressionLayer];
+end
+\end{lstlisting}
+
+Function: $\texttt{create\_3\_side\_by\_side\_lstm.m}$
+\begin{lstlisting}
+function [Networklayers] = create_3_side_by_side_lstm(xTrain, yTrain)
+
+[featureDimension, ~] = size(xTrain{1});
+[numResponses, ~]     = size(yTrain{1});
+
+lgraph = layerGraph();
+
+tempLayers = sequenceInputLayer(featureDimension,'Name','sequence');
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = lstmLayer(128,'Name','lstm_2');
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = lstmLayer(128,'Name','lstm_1');
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = lstmLayer(128,'Name','lstm_3');
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    concatenationLayer(1,3,'Name','concat')
+    fullyConnectedLayer(numResponses,'Name','fc')
+    regressionLayer('Name','regressionoutput')];
+lgraph = addLayers(lgraph,tempLayers);
+
+% clean up helper variable
+clear tempLayers;
+
+lgraph = connectLayers(lgraph,'sequence','lstm_2');
+lgraph = connectLayers(lgraph,'sequence','lstm_1');
+lgraph = connectLayers(lgraph,'sequence','lstm_3');
+lgraph = connectLayers(lgraph,'lstm_2','concat/in2');
+lgraph = connectLayers(lgraph,'lstm_1','concat/in1');
+lgraph = connectLayers(lgraph,'lstm_3','concat/in3');
+
+Networklayers = lgraph;
+\end{lstlisting}
+
+Function: $\texttt{create\_deep\_lstm.m}$
+\begin{lstlisting}
+function [Networklayers] = create_deep_lstm(xTrain, yTrain)
+
+[featureDimension, ~] = size(xTrain{1});
+[numResponses, ~]     = size(yTrain{1});
+
+Networklayers = [sequenceInputLayer(featureDimension, 'Normalization','zscore') ...
+    lstmLayer(128) ...
+    lstmLayer(128) ...
+    lstmLayer(128) ...
+    fullyConnectedLayer(numResponses) ...
+    regressionLayer];
+end
+\end{lstlisting}
+
+\section{Long-Term Drift in RMSE}
+
+Filename: $\texttt{week\_drift\_subbatch\_analysis.m}$
+\begin{lstlisting}
+load('run_results\architecture_experiment.mat')
+load('alldatatrain\all_data_processed_4in_1out_yremove125.mat')
+
+net = deep_lstm.resetState();
+
+combined_Xdata = cat(2, Xdata{:});
+combined_Ydata = cat(2, Ydata{:});
+y_pred = net.predict(combined_Xdata, 'MiniBatchSize', 1);
+
+errors = zeros(1,length(y_pred));
+for b = 1:length(y_pred)
+    errors(b) = sqrt(sum((y_pred{b} - combined_Ydata{b}).^2/length(y_pred{b})));
+end
+
+figure; plot(errors); title('Model RMSE over Time'); 
+ylabel('RMSE'); xlabel('Subbatch'); xlim([0 length(errors)])
+latexify_plot;
+\end{lstlisting}
+
+\section{Grid Search and Model Selection}
+
+Filename: $\texttt{sys\_id\_pipeline.m}$
+\begin{lstlisting}
+%% Main
+clear; clc; close all;
+
+[num_good_subbatches, average_accuracy] = grid_search_oe('kd', 10, false); 
+writematrix([num_good_subbatches; average_accuracy], 'kd_oe_results.xlsx');
+
+[num_good_subbatches, average_accuracy] = grid_search_oe('kt', 10, false);
+writematrix([num_good_subbatches; average_accuracy], 'kt_oe_results.xlsx');
+
+[num_good_subbatches, average_accuracy] = grid_search_armax('kd', 8, false); 
+writematrix([num_good_subbatches; average_accuracy], 'kd_armax_results.xlsx');
+
+[num_good_subbatches, average_accuracy] = grid_search_armax('kt', 8, false);
+writematrix([num_good_subbatches; average_accuracy], 'kt_armax_results.xlsx');
+
+[all_sys, all_iddata] = merge_models('kd', 'oe', [1 4 3], false);
+[all_sys, all_iddata] = merge_models('kd', 'armax', [4 3 1 3], false);
+[all_sys, all_iddata] = merge_models('kt', 'oe', [4 5 4], false);
+[all_sys, all_iddata] = merge_models('kt', 'armax', [3 2 2 3], false);
+
+%% Function Definitions
+function [all_file_data, dt] = load_data()
+    % parameters
+    strDataPath = 'C:\fakepath\MIT_DrawData_48and51\';
+    all_files   = dir(strDataPath);
+    curr_path   = 'C:\fakepath\Desktop\fiber-draw';
+    
+    % BatchInfo Parameters
+    bXLSLoad = 1;
+    bPlotAll = 0;
+    bPlot_each_preform_on_subplot = 1;
+    bPlot_each_preform_on_subplot_with_inrangesubbatches_ = 1;
+    loBFD = 124;
+    hiBFD = 126;
+    nTower = 48; % The tower number
+    subbatchMinLen 	= 2000; 
+    subbatchMaxLen  = 16000;
+    x_columns = ['cpspdactval', 'frnpwrmv', 'pfspdactval'];
+    y_columns = ['barefibrediadisplay', 'tenncmv'];
+    
+    % Subbatch Parameters
+    fltLEN = 21;
+    bPlot = 0; 
+    PrefltLEN = 1;
+    dt = 0.5;
+    
+    if exist('all_file_data.mat', 'file') ~= 2
+        all_file_data = cell(length(all_files),2);
+    
+        for i = 1:length(all_files)
+            curr_file = all_files(i);
+            if ~curr_file.isdir
+                % get batch info
+                [BatchInfo, STRDEF] = stl_load_batchinfo(bXLSLoad, strDataPath, curr_file.name, nTower, bPlotAll, bPlot_each_preform_on_subplot_with_inrangesubbatches_, bPlot_each_preform_on_subplot, loBFD, hiBFD, subbatchMinLen, subbatchMaxLen, x_columns, y_columns);
+    
+                % turn it into a train / test array
+                [XTrainTranspose, YTrainTranspose] = stl_prep_training_data(BatchInfo, STRDEF, x_columns, y_columns, fltLEN, PrefltLEN, bPlot, 0, 0);
+    
+                all_file_data{i,1} = XTrainTranspose;
+                all_file_data{i,2} = YTrainTranspose;
+            end
+            fprintf('%d/%d files loaded...\n', i, length(all_files))
+        end
+    
+        save('all_file_data','all_file_data')
+    else
+        load('all_file_data.mat', 'all_file_data');
+    end
+    
+    disp('Done Loading!')
+end
+
+function [num_good_subbatches, average_accuracy] = grid_search_oe(controller, max_order, plot_sysid_process)
+
+    [all_file_data, dt] = load_data();
+    
+    switch controller
+        case 'kd'
+            all_nk = [3];
+        case 'kt'
+            all_nk = 1:4;
+        otherwise
+            error("invalid controller argument!")
+    end
+    
+    fit_matrix = cell(length(all_file_data), 1);
+    folder_name = sprintf("oe_%s_plots", controller);
+    
+    if plot_sysid_process && exist(folder_name, 'dir') ~= 7
+        mkdir(folder_name);
+    end
+    
+    for file_ind = 1:16 % tower 48
+        curr_file = all_file_data{file_ind,1};
+        if ~isempty(curr_file)
+    
+            % load from loaded data
+            XTrainTranspose = all_file_data{file_ind,1};
+            YTrainTranspose = all_file_data{file_ind,2};
+    
+            fit_matrix{file_ind} = zeros(length(XTrainTranspose), max_order^2*length(all_nk));
+    
+            for i = 1:length(XTrainTranspose)
+                xs = cell2mat(XTrainTranspose(i));
+                ys = cell2mat(YTrainTranspose(i));
+                capstan_speed = xs(1,:); furnace_power = xs(2,:); preform_speed = xs(3,:);
+                bfd = ys(1,:); tension = ys(2,:);
+    
+                switch controller
+                    case 'kd'
+                        outputs = capstan_speed';
+                        inputs = bfd'-125;
+    
+                    case 'kt'
+                        outputs = furnace_power';
+                        inputs = tension'-median(tension);
+                end
+    
+                iddata_subbatch = iddata(outputs, inputs, dt);
+    
+                for a = 1:max_order for b = 1:max_order for k = all_nk
+                    if ~(a<4 && b<4)
+                        sys_subbatch = oe(iddata_subbatch,  [a b k]);
+    
+                        [y_hat, fit, ~] = compare(iddata_subbatch, sys_subbatch);
+    
+                        fprintf('file %d/%d\t subbatch %d/%d \t %d \t %d \t %d \t %2.4f\n',file_ind,length(all_file_data),i,length(XTrainTranspose), a, b, k, fit)
+    
+                        if (30 < abs(fit) && abs(fit) < 150)
+                            switch controller
+                                case 'kd'
+                                    fit_matrix{file_ind}(i, (a-1)*max_order+b) = abs(fit);
+                                case 'kt'
+                                    fit_matrix{file_ind}(i, (a-1)*max_order*4+(b-1)*4+k) = abs(fit);
+                            end
+    
+                            if plot_sysid_process
+                                fig = figure(1); set(gcf, 'Position', [229 222 754 696])
+                                subplot(2,1,1);
+                                compare(iddata_subbatch, sys_subbatch);
+                                title(sprintf('%d, %d, (%d,%d,%d)', file_ind,i,a,b,k));
+                                ax = gca; ax.Legend.Location = 'southeast';
+    
+                                subplot(2,1,2);
+                                plot_fft_comparison(outputs', y_hat.OutputData)
+                                latexify_plot;
+                                saveas(fig, sprintf('%s\\%d,%d,(%d,%d,%d)',folder_name,file_ind,i,a,b,k),'png');
+                            end
+                        end
+                    end
+                end; end; end
+            end
+        end
+    end
+    
+    fit_matrix_all = [];
+    
+    for i = 1:length(fit_matrix)
+        fit_matrix_all = vertcat(fit_matrix_all,fit_matrix{i});
+    end
+    
+    num_good_subbatches = zeros(1,size(fit_matrix_all,2));
+    average_accuracy = zeros(1,size(fit_matrix_all,2));
+    
+    for i = 1:size(fit_matrix_all,2)
+        col = fit_matrix_all(:,i);
+        num_good_subbatches(i) = sum(col > 30 & col <= 100);
+        average_accuracy(i) = mean(col(col > 30 & col <= 100));
+    end
+end
+
+function [num_good_subbatches, average_accuracy] = grid_search_armax(controller, max_order, plot_sysid_process)
+
+    [all_file_data, dt] = load_data();
+    
+    switch controller
+        case 'kd'
+            all_nk = [3];
+        case 'kt'
+            all_nk = 1:4;
+        otherwise
+            error("invalid controller argument!")
+    end
+    
+    fit_matrix = cell(length(all_file_data), 1);
+    folder_name = sprintf("armax_%s_plots", controller);
+    
+    if plot_sysid_process && exist(folder_name, 'dir') ~= 7
+        mkdir(folder_name);
+    end
+    
+    for file_ind = 1:16 % tower 48
+        curr_file = all_file_data{file_ind,1};
+        if ~isempty(curr_file)
+    
+            % load from loaded data
+            XTrainTranspose = all_file_data{file_ind,1};
+            YTrainTranspose = all_file_data{file_ind,2};
+    
+            fit_matrix{file_ind} = zeros(length(XTrainTranspose), max_order^3*length(all_nk));
+    
+            for i = 1:length(XTrainTranspose)
+                xs = cell2mat(XTrainTranspose(i));
+                ys = cell2mat(YTrainTranspose(i));
+                capstan_speed = xs(1,:); furnace_power = xs(2,:); preform_speed = xs(3,:);
+                bfd = ys(1,:); tension = ys(2,:);
+    
+                switch controller
+                    case 'kd'
+                        outputs = capstan_speed';
+                        inputs = bfd'-125;
+    
+                    case 'kt'
+                        outputs = furnace_power';
+                        inputs = tension'-median(tension);
+                end
+    
+                iddata_subbatch = iddata(outputs, inputs, dt);
+    
+                for a = 1:max_order for b = 1:max_order for c = 1:max_order for k = all_nk
+                    if ~(a<4 && b<4 && c<4)
+                        sys_subbatch = armax(iddata_subbatch,  [a b c k]);
+    
+                        [y_hat, fit, ~] = compare(iddata_subbatch, sys_subbatch);
+                        fprintf('file %d/%d\t subbatch %d/%d \t %d \t %d \t %d \t %d \t %2.4f\n',file_ind,length(all_file_data),i,length(XTrainTranspose), a, b, c, k, fit)
+    
+                        if (30 < abs(fit) && abs(fit) < 150)
+                            switch controller
+                                case 'kd'
+                                    fit_matrix{file_ind}(i, (a-1)*max_order^2+(b-1)*max_order+c) = abs(fit);
+                                case 'kt'
+                                    fit_matrix{file_ind}(i, (a-1)*max_order^3+(b-1)*max_order^2+(c-1)*max_order+k) = abs(fit);
+                            end
+    
+    
+                            if plot_sysid_process
+                                fig = figure(1); set(gcf, 'Position', [229 222 754 696])
+                                subplot(2,1,1);
+                                compare(iddata_subbatch, sys_subbatch);
+                                title(sprintf('%d, %d, (%d,%d,%d)', file_ind,i,a,b,c));
+                                ax = gca; ax.Legend.Location = 'southeast';
+    
+                                subplot(2,1,2);
+                                plot_fft_comparison(outputs', y_hat.OutputData)
+                                latexify_plot;
+                                saveas(fig, sprintf('%s\\%d,%d,(%d,%d,%d)',folder_name,file_ind,i,a,b,k),'png');
+                            end
+                        end
+                    end
+                end; end; end; end
+            end
+        end
+    end
+    
+    fit_matrix_all = [];
+    
+    for i = 1:length(fit_matrix)
+        fit_matrix_all = vertcat(fit_matrix_all,fit_matrix{i});
+    end
+    
+    num_good_subbatches = zeros(1,size(fit_matrix_all,2));
+    average_accuracy = zeros(1,size(fit_matrix_all,2));
+    
+    for i = 1:size(fit_matrix_all,2)
+        col = fit_matrix_all(:,i);
+        num_good_subbatches(i) = sum(col > 30 & col <= 100);
+        average_accuracy(i) = mean(col(col > 30 & col <= 100));
+    end
+
+end
+
+
+function [all_sys, all_iddata] = merge_models(controller, model_struc, selected_orders, plot_sysid_process)
+
+    [all_file_data, dt] = load_data();
+    
+    if ~any(strcmp({'kd','kt'}, controller))
+        error('invalid controller argument!')
+    end
+    
+    if ~any(strcmp({'armax','oe'}, model_struc))
+        error('invalid model structure argument!')
+    end
+    
+    if ~((strcmpi(model_struc, 'armax') && length(selected_orders) == 4) || (strcmpi(model_struc, 'oe') && length(selected_orders) == 3))
+        error('invalid specified orders!')
+    end
+    
+    all_sys = {};
+    all_iddata = {};
+    folder_name = sprintf("%s_%s_merge", controller, model_struc);
+    if plot_sysid_process && exist(folder_name, 'dir') ~= 7
+        mkdir(folder_name);
+    end
+    
+    for file_ind = 1:16 % tower 48
+        curr_file = all_file_data(file_ind);
+        if ~isempty(curr_file)
+    
+            % load from loaded data
+            XTrainTranspose = all_file_data{file_ind,1};
+            YTrainTranspose = all_file_data{file_ind,2};
+    
+            for i = 1:length(XTrainTranspose)
+                xs = cell2mat(XTrainTranspose(i));
+                ys = cell2mat(YTrainTranspose(i));
+                capstan_speed = xs(1,:); furnace_power = xs(2,:); preform_speed = xs(3,:);
+                bfd = ys(1,:); tension = ys(2,:);
+    
+                switch controller
+                    case 'kd'
+                        outputs = capstan_speed';
+                        inputs = bfd'-125;
+    
+                    case 'kt'
+                        outputs = furnace_power';
+                        inputs = tension'-median(tension);
+                end
+    
+                iddata_subbatch = iddata(outputs, inputs, dt);
+    
+                switch model_struc
+                    case 'oe'
+                        sys_subbatch = oe(iddata_subbatch,  selected_orders);
+                    case 'armax'
+                        sys_subbatch = armax(iddata_subbatch,  selected_orders);
+                end
+    
+                [y_hat, fit, ~] = compare(iddata_subbatch, sys_subbatch);
+    
+                fprintf('file %d/%d\t subbatch %d/%d \t %2.4f\n',file_ind,length(all_file_data),i,length(XTrainTranspose), fit)
+    
+                if (30 < abs(fit) && abs(fit) < 150)
+                    if isempty(all_iddata)
+                        all_iddata = {iddata_subbatch};
+                    else
+                        all_iddata = horzcat(all_iddata, {iddata_subbatch});
+                    end
+    
+                    if isempty(all_sys)
+                        all_sys = {sys_subbatch};
+                    else
+                        all_sys = horzcat(all_sys, {sys_subbatch});
+                    end
+    
+                    if plot_sysid_process
+                        fig = figure(1); set(gcf, 'Position', [229 222 754 696])
+                        subplot(2,1,1);
+                        compare(iddata_subbatch, sys_subbatch);
+                        title(sprintf('File %d, Subbatch %d', file_ind,i));
+                        ax = gca; ax.Legend.Location = 'southeast';
+    
+                        subplot(2,1,2);
+                        plot_fft_comparison(outputs', y_hat.OutputData)
+                        latexify_plot;
+                        saveas(fig, sprintf('%s\\%d,%d',folder_name,file_ind,i),'png');
+                    end
+                end
+            end
+        end
+    end
+    disp('Done Iterating!');
+    
+    [m, tv] = merge(all_sys{:});
+    disp('Done with merge(sys)!')
+    
+    switch model_struc
+        case 'oe'
+            sys_total = oe(merge(all_iddata{:}), selected_orders);
+            disp('Done with oe(merge(), [])!')
+        case 'armax'
+            sys_total = armax(merge(all_iddata{:}), selected_orders);
+            disp('Done with armax(merge(), [])!')
+    end
+    
+    save(sprintf('sys_%s_total_%s.mat', controller, model_struc), 'all_sys', 'all_iddata', 'sys_total', 'm', 'tv');
+end
+
+function plot_fft_comparison(Y, Ypredict)
+    %take the FFT
+    FY = fft(Y);
+    FY_s = fftshift(FY);
+    FYpredict = fft(Ypredict);
+    FYpredict_s = fftshift(FYpredict);
+    
+    %the radial frequencies
+    frq_discretes = 2/length(Y).*([0:(length(Y)-1)]-length(Y)/2);
+    
+    plot(frq_discretes,log10(abs(FY_s).^2),'k');
+    hold on
+    plot(frq_discretes,log10(abs(FYpredict_s).^2),'r');
+    hold off
+    
+    ylabel('Log Magnitude')
+    xlabel('Frequency')
+    legend('Data', 'Prediction')
+    axis([0 1 -.1  max([   max(log10(abs(FY_s).^2))   max(log10(abs(FYpredict_s).^2))   ])   ])
+    title('Power Spectrum');
+end
+\end{lstlisting}
+
+\section{Simulated Bode Plot}
+
+Filename: $\texttt{bode\_fft.m}$
+
+\begin{lstlisting}
+%% Init
+clc; clear; close all;
+curr_path = 'C:\fakepath\Desktop\fiber-draw';
+cd(curr_path);
+load('run_results\architecture_experiment.mat');
+load('alldatatrain\all_data_processed_4in_1out_yremove125.mat');
+folder_name = 'sim_bode_results';
+if exist(folder_name, 'dir') ~= 7
+    mkdir(folder_name);
+end
+
+combined_Xdata = cat(2, Xdata{:});
+
+labels = {'Capstan Speed', 'Furnace Power', 'Helium Temperature', 'Preform Velocity'};
+mean_matrix = zeros(length(combined_Xdata),4);
+for i = 1:length(combined_Xdata)
+    subbatch = combined_Xdata{i};
+    mean_matrix(i,:) = [mean(subbatch(1,:)) mean(subbatch(2,:)) mean(subbatch(3,:)) mean(subbatch(4,:))];
+end
+median1 = median(mean_matrix(:,1));
+median2 = median(mean_matrix(:,2));
+median3 = median(mean_matrix(:,3));
+median4 = median(mean_matrix(:,4));
+
+combined_Xdata = cat(2, Xdata{:});
+combined_Ydata = cat(2, Ydata{:});
+
+sampling_freq = 2; % Hz
+nyq_freq = sampling_freq * 2*3 / 2; % rad/s
+avg_capstan_speed = 2500;
+subbatch_length = 8000;
+
+T = 1/sampling_freq;            % Sampling period
+L = subbatch_length;            % Length of signal
+t = (0:subbatch_length-1)*T;    % Time vector
+f = sampling_freq*(0:(L/2))/L;  % Frequency vector
+
+all_w = logspace(-2,log10(nyq_freq),100);
+all_ffts = cell(4, 1);
+num_peaks_counted = 10;
+significant_peak_ratio = 0.05;
+fit_opt = fitoptions('Method', 'LinearLeastSquares', 'Robust', 'Bisquare');
+
+plot_progress = true;
+
+if (plot_progress) figure(1); latexify_plot; end
+
+%% generate simulated bode (typical runtime: 2 hrs)
+typical_A = [500 8 2.5 10]; % 1st, 2nd, 3rd, 4th row
+
+for row = 1:4
+    A = typical_A(row);
+    all_ffts{row} = zeros(length(f), length(all_w));
+
+    for j = 1:length(all_w)
+        w = all_w(j);
+        sine_wave = A * sin(w*t);
+
+        % add sine wave to 1st, 2nd, 3rd, 4th row
+        new_Xdata = [ones(1,subbatch_length)*avg_capstan_speed;
+            ones(1,subbatch_length)*median2;
+            ones(1,subbatch_length)*median3;
+            ones(1,subbatch_length)*median4];
+
+        new_Xdata(row,:) = new_Xdata(row,:) + sine_wave;
+        
+        net = deep_lstm.resetState();
+        y_pred = net.predict(new_Xdata, 'MiniBatchSize', 1);
+
+        y_pred_fft = fft(y_pred);
+        P2 = abs(y_pred_fft/L);
+        P1 = P2(1:L/2+1);
+        P1(2:end-1) = 2*P1(2:end-1);
+
+        fft_peaks = P1(islocalmax(P1));
+        max_peak = max(fft_peaks);
+        highest_peaks_inds = find(fft_peaks > significant_peak_ratio*max_peak, num_peaks_counted, 'first');
+        highest_peaks = fft_peaks(highest_peaks_inds);
+
+        peaks_plot = zeros(size(P1));
+        for ind = 1:length(highest_peaks_inds)
+            peaks_plot(P1 == highest_peaks(ind)) = highest_peaks(ind);
+        end
+
+        all_ffts{row}(:,j) = peaks_plot';
+
+        if plot_progress
+            peaks_plot_progress = ones(size(P1))*nan;
+            for ind = 1:length(highest_peaks_inds)
+                peaks_plot_progress(P1 == highest_peaks(ind)) = highest_peaks(ind);
+            end
+            subplot(2,1,1); plot(t,y_pred);
+            title(sprintf('Plant Output with Sinusoidal %s', labels{row}));
+            xlabel('Time (s)'); ylabel('BFD Error');
+            subplot(2,1,2); plot(f,P1); hold on;
+            plot(f, peaks_plot_progress, '.', 'MarkerSize', 10); hold off;
+            xlimit_ind = find(P1 > 1e-4, 1, 'last');
+            xlim([0, f(xlimit_ind)]);
+            xlabel('Frequency (Hz)'); ylabel('FFT Amplitude');
+            title('FFT of Plant Output');
+            pause(0.01)
+        end
+
+        fprintf('row: %d\t freq: %d/%d\n', row, j, length(all_w))
+    end
+end
+
+if (row == 4 &&j == length(all_w))
+    save(sprintf('%s\\%s\\bode_fft.mat', curr_path, folder_name),'all_ffts');
+end
+
+%% plot 3d
+cd(curr_path);
+load([curr_path '\' folder_name '\' 'bode_fft.mat']);
+for row = 1:4
+    figure; mesh(all_w/(2*pi), f, all_ffts{row}); latexify_plot;
+    set(gca, 'ZLim', get(gca, 'ZLim') .* [0 1] + [7e-6 0]);
+    title(sprintf('Frequency Response w.r.t. %s', labels{row}))
+    xlabel('Input frequency (Hz)');
+    ylabel('Output frequency (Hz)');
+    zlabel('FFT Amplitude');
+    axis square; grid on; grid minor; box on;
+end
+\end{lstlisting}
+
+\section{Closed-Loop Simulation} \label{apdx:code:sim}
+
+\begin{lstlisting}
+%% Init
+clc; clear; close all; 
+
+load('results\architecture_experiment_4in_2out.mat', 'deep_lstm')
+load('alldatatrain\all_data_processed_4in_2out_yremove125.mat');
+load('sys_kd_total_armax.mat', 'sys_kd_total')
+load('sys_kt_total_armax.mat', 'sys_kt_total')
+
+folder_name = "_closed_loop_sim";
+if exist(folder_name, 'dir') ~= 7
+    mkdir(folder_name);
+end
+
+% simulate with learned controllers and system model
+bfd_setpoint = 125; % setpoint for controller
+init_time = 5; % timesteps to initialize memory
+curr_bfd_error = 0;
+dt = 0.5;
+net = deep_lstm;
+subbatch = 16;
+
+A_kd = sys_kd_total.A;
+B_kd = sys_kd_total.B; 
+C_kd = sys_kd_total.C;
+noise_variance_kd = sys_kd_total.NoiseVariance;
+
+A_kt = sys_kt_total.A;
+B_kt = sys_kt_total.B; 
+C_kt = sys_kt_total.C;
+noise_variance_kt = sys_kt_total.NoiseVariance;
+
+orders_kd_armax = [4 3 1 3];
+nk_kd = 3;
+orders_kt_armax = [3 2 2 3];
+nk_kt = 3;
+
+% Preform Velocity Lookup Table
+slope = [0 0.01 0.2 0.3 0.5 0.8 1 1.5 2 3 4];
+speed100 = [4.2 4 2.5 1.6 0 -3 -5 -8 -10 -10 -10];
+speed130 = [2.5 2 1 0.5 -1 -2 -3 -4 -8 -10 -10];
+
+slopefit100 = slope(1:end-2);
+speedfit100 = speed100(1:end-2);
+slopefit130 = slope(1:end-1);
+speedfit130 = speed130(1:end-1);
+
+ft = fittype('a*exp(-b*x)+c','independent','x');
+[F100, ~] =  fit(slopefit100', speedfit100', ft);
+[F130, ~] =  fit(slopefit130', speedfit130', ft);
+
+lookup_table_100 = @(slope_input) max(F100(slope_input), -10);
+lookup_table_130 = @(slope_input) max(F130(slope_input), -10);
+
+disp('Init Complete!')
+
+%% Simulate
+
+x_sample = x_test{subbatch}; % rows: capstan speed, furnace power, He temp, preform velocity
+y_sample = y_test{subbatch}; % BFD error, tension error
+
+capstan_speed_prev = x_sample(1,1); % set to first value
+T = length(y_sample); % usually 8000 with some exceptions
+
+Kd_output_array = zeros(1, T); 
+Kd_input_array = zeros(1, T); 
+Kt_input_array = zeros(1, T);
+Kt_output_array = zeros(1, T);
+nn_output = zeros(1, T);
+white_noise_kd = sqrt(noise_variance_kd) .* randn(1,T);
+white_noise_kt = sqrt(noise_variance_kt) .* randn(1,T);
+
+for t = 1:init_time
+    Kd_output_array(t) = x_sample(1, t);
+    capstan_speed_slope = (Kd_output_array(t) - capstan_speed_prev)/dt;
+    preform_velocity = lookup_table_100(capstan_speed_slope);
+    Kt_output_array(t) = x_sample(2, t);
+    [net, errors] = predictAndUpdateState(net, [x_sample(1:3, t); preform_velocity]);
+    curr_bfd_error = errors(1); tension_error = errors(2);
+    nn_output(t) = curr_bfd_error + bfd_setpoint;
+    Kt_input_array(t) = tension_error;
+    Kd_input_array(t) = curr_bfd_error;
+    capstan_speed_prev = x_sample(1, t);
+end
+
+for t = init_time+1 : T
+    % ----------- Kd: BFD error -> capstan speed -------------
+    Kd_input_array(t) = curr_bfd_error;
+    Kd_output = B_kd(4)*Kd_input_array(t-nk_kd-3) + B_kd(5)*Kd_input_array(t-nk_kd-4) + B_kd(6)*Kd_input_array(t-nk_kd-5) ...
+                + white_noise_kd(t) + C_kd(2)*white_noise_kd(t-1) ...
+                - (A_kd(2)*Kd_output_array(t-1) + A_kd(3)*Kd_output_array(t-2) + A_kd(4)*Kd_output_array(t-3) + A_kd(5)*Kd_output_array(t-4));
+
+    Kd_output_array(t) = Kd_output;
+
+    % ----------- Kt: tension error -> furnace power  -------------
+    Kt_input_array(t) = tension_error;
+    Kt_output = B_kt(4)*Kt_input_array(t-nk_kt-3) + B_kt(5)*Kt_input_array(t-nk_kt-4) ...
+                + white_noise_kt(t) + C_kt(2)*white_noise_kt(t-1) + C_kt(3)*white_noise_kt(t-2) ...
+                - (A_kt(2)*Kt_output_array(t-1) + A_kt(3)*Kt_output_array(t-2) + A_kt(4)*Kt_output_array(t-3));
+
+    Kt_output_array(t) = Kt_output;
+
+    % ----------- Lookup Table  -------------
+    capstan_speed_slope = (Kd_output - capstan_speed_prev)/dt;
+    preform_velocity = lookup_table_100(capstan_speed_slope);
+
+    % ----------- NN Inference  -------------
+    nn_input = [Kd_output; Kt_output; x_sample(3, t); preform_velocity];
+
+    [net, errors] = predictAndUpdateState(net, nn_input);
+    curr_bfd_error = errors(1); tension_error = errors(2);
+    nn_output(t) = curr_bfd_error + bfd_setpoint;
+    
+    capstan_speed_prev = Kd_output;
+end
+fprintf('Simulation Done! %d\n', subbatch)
+
+% plots
+fig = figure(1);
+subplot(3,2,[1 2])
+plot(y_sample(1,:) + bfd_setpoint); hold on;
+plot(nn_output); hold off;
+xlabel('$t$'); ylabel('Simulated BFD'); 
+title('Closed-Loop Simulation with Learned Models')
+legend({'Data', 'Simulation'})
+ylim([124.5 125.5])
+
+subplot(3,2,3)
+plot(y_sample(1,:)); hold on;
+plot(Kd_input_array); hold off;
+xlabel('$t$'); ylabel('BFD Error');
+title('$K_d$ Controller Input')
+ylim([-0.75 0.75])
+
+subplot(3,2,4)
+plot(Kd_output_array); hold on;
+plot(x_sample(1,:)); hold off
+xlabel('$t$'); ylabel('Capstan Speed');
+title('$K_d$ Controller Output')
+
+
+subplot(3,2,5)
+plot(Kt_input_array); hold on;
+plot(y_sample(2,:)); hold off;
+xlabel('$t$'); ylabel('Tension Error');
+title('$K_t$ Controller Input')
+ylim([-25 15])
+
+subplot(3,2,6)
+plot(Kt_output_array); hold on;
+plot(x_sample(2,:)); hold off;
+xlabel('$t$'); ylabel('Furnace Power');
+title('$K_t$ Controller Output')
+ylim([60 75])
+
+latexify_plot;
+\end{lstlisting}
+
+\section{Helper Function for Plot Readability}
+
+Filename: $\texttt{latexify\_plot.m}$
+
+\begin{lstlisting}
+set(gcf, 'Color', 'white');
+set(groot, 'defaultAxesTickLabelInterpreter','latex'); 
+set(groot, 'defaultLegendInterpreter','latex');
+set(groot, 'defaultTextInterpreter','latex');
+
+ff = gcf;
+all_axes = findobj(ff.Children, 'type', 'Axes');
+for ax = 1:length(all_axes)
+    all_axes(ax).FontSize = 12;
+    all_axes(ax).Title.Interpreter = 'latex';
+    all_axes(ax).Title.FontSize = 14;    
+end
+\end{lstlisting}
+
+% \clearpage
+% \newpage

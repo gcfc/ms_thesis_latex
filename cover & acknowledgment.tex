@@ -1,0 +1,148 @@
+% -*-latex-*-
+% 
+% For questions, comments, concerns or complaints:
+% thesis@mit.edu
+% 
+%
+% $Log: cover.tex,v $
+% Revision 1.9  2019/08/06 14:18:15  cmalin
+% Replaced sample content with non-specific text.
+%
+% Revision 1.8  2008/05/13 15:02:15  jdreed
+% Degree month is June, not May.  Added note about prevdegrees.
+% Arthur Smith's title updated
+%
+% Revision 1.7  2001/02/08 18:53:16  boojum
+% changed some \newpages to \cleardoublepages
+%
+% Revision 1.6  1999/10/21 14:49:31  boojum
+% changed comment referring to documentstyle
+%
+% Revision 1.5  1999/10/21 14:39:04  boojum
+% *** empty log message ***
+%
+% Revision 1.4  1997/04/18  17:54:10  othomas
+% added page numbers on abstract and cover, and made 1 abstract
+% page the default rather than 2.  (anne hunter tells me this
+% is the new institute standard.)
+%
+% Revision 1.4  1997/04/18  17:54:10  othomas
+% added page numbers on abstract and cover, and made 1 abstract
+% page the default rather than 2.  (anne hunter tells me this
+% is the new institute standard.)
+%
+% Revision 1.3  93/05/17  17:06:29  starflt
+% Added acknowledgements section (suggested by tompalka)
+% 
+% Revision 1.2  92/04/22  13:13:13  epeisach
+% Fixes for 1991 course 6 requirements
+% Phrase "and to grant others the right to do so" has been added to 
+% permission clause
+% Second copy of abstract is not counted as separate pages so numbering works
+% out
+% 
+% Revision 1.1  92/04/22  13:08:20  epeisach
+
+% NOTE:
+% These templates make an effort to conform to the MIT Thesis specifications,
+% however the specifications can change. We recommend that you verify the
+% layout of your title page with your thesis advisor and/or the MIT 
+% Libraries before printing your final copy.
+\title{A Data-Driven Approach to System Dynamics Modeling and Control Design}
+
+\author{George C. Chen}
+% If you wish to list your previous degrees on the cover page, use the 
+% previous degrees command:
+\prevdegrees{B.S., Massachusetts Institute of Technology (2021)}
+% You can use the \\ command to list multiple previous degrees
+%       \prevdegrees{B.S., University of California (1978) \\
+%                    S.M., Massachusetts Institute of Technology (1981)}
+\department{Department of Mechanical Engineering}
+
+% If the thesis is for two degrees simultaneously, list them both
+% separated by \and like this:
+% \degree{Doctor of Philosophy \and Master of Science}
+\degree{Master of Science in Mechanical Engineering}
+
+% As of the 2007-08 academic year, valid degree months are September, 
+% February, or June.  The default is June.
+\degreemonth{May}
+\degreeyear{2022}
+\thesisdate{May 6, 2022}
+
+%% By default, the thesis will be copyrighted to MIT.  If you need to copyright
+%% the thesis to yourself, just specify the `vi' documentclass option.  If for
+%% some reason you want to exactly specify the copyright notice text, you can
+%% use the \copyrightnoticetext command.  
+%\copyrightnoticetext{\copyright IBM, 1990.  Do not open till Xmas.}
+
+% If there is more than one supervisor, use the \supervisor command
+% once for each.
+\supervisor{Dr. Brian W. Anthony}{Principal Research Scientist}
+
+% This is the department committee chairman, not the thesis committee
+% chairman.  You should replace this with your Department's Committee
+% Chairman.
+\chairman{Nicolas Hadjiconstantinou}{Graduate Officer}
+
+% Make the titlepage based on the above information.  If you need
+% something special and can't use the standard form, you can specify
+% the exact text of the titlepage yourself.  Put it in a titlepage
+% environment and leave blank lines where you want vertical space.
+% The spaces will be adjusted to fill the entire page.  The dotted
+% lines for the signatures are made with the \signature command.
+\maketitle
+
+% The abstractpage environment sets up everything on the page except
+% the text itself.  The title and other header material are put at the
+% top of the page, and the supervisors are listed at the bottom.  A
+% new page is begun both before and after.  Of course, an abstract may
+% be more than one page itself.  If you need more control over the
+% format of the page, you can use the abstract environment, which puts
+% the word "Abstract" at the beginning and single spaces its text.
+
+%% You can either \input (*not* \include) your abstract file, or you can put
+%% the text of the abstract directly between the \begin{abstractpage} and
+%% \end{abstractpage} commands.
+
+% First copy: start a new page, and save the page number.
+\cleardoublepage
+% Uncomment the next line if you do NOT want a page number on your
+% abstract and acknowledgments pages.
+% \pagestyle{empty}
+\setcounter{savepage}{\thepage}
+\begin{abstractpage}
+\input{abstract}
+\end{abstractpage}
+
+% Additional copy: start a new page, and reset the page number.  This way,
+% the second copy of the abstract is not counted as separate pages.
+% Uncomment the next 6 lines if you need two copies of the abstract
+% page.
+% \setcounter{page}{\thesavepage}
+% \begin{abstractpage}
+% \input{abstract}
+% \end{abstractpage}
+
+\cleardoublepage
+
+\section*{Acknowledgment}
+
+Words cannot describe my gratitude for all who have supported me directly and indirectly throughout my graduate career at MIT. This thesis would not have been possible without you all. 
+
+First and foremost, I would like to thank Dr. Brian Anthony, my thesis supervisor, for the guidance and mentorship that significantly contributed to the fruition of this thesis. I am grateful for your support of my career path forward. 
+
+Furthermore, I am thankful for my labmate Victor Reyes, with whom I closely collaborated on this research project. Our discussions on machine learning and data analysis were immensely helpful in making forward progress in experimentation setup and analyses. I am fortunate to have collaborated with you to realize the theoretical ideas presented in this thesis. 
+
+Last but not least, I would like to thank my parents, Yigang Chen and Yonghong Zhang. My achievements could not have been possible without your unconditional love and unwavering support for my entire lifetime. Immigrating to the US was not an easy transition; despite all the hardships that came our way, your spirit of perseverance empowered me to overcome my own hardships. You made sacrifices that created opportunities for me to achieve great heights in academia and beyond. For all you have done, I am eternally grateful.
+
+
+\begin{CJK*}{UTF8}{gbsn} % gbsn / gkai
+最后，诚挚感谢我的父母%陈奕港先生和张永红女士
+。我今天的成就离不开您们二十余载无条件的爱与义无反顾的支持。举家移民谈何容易，重重困难中，您们目光里的坚定化为我前进路上的无限动力。感恩您们日日付出为我创造的平台，让我能在学业与事业上攀登新的高峰。乌鸟私情，愿乞终养。行文于此，以表孝心。
+\end{CJK*}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% -*-latex-*-

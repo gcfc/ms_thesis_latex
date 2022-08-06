@@ -1,0 +1,28 @@
+\chapter{Conclusion}
+
+\section{Contributions}
+
+The principle contributions of this thesis are manifold. Firstly, the methodology developed in this thesis is beneficial to Sterlite and the manufacturing community at large. The developed closed-loop simulation could replace the traditional, iterative way of controller bringup; industrial facilities can make use of a digital twin as a design tool to optimize controllers in production. The procedure employed in this thesis, mentioned in Section \ref{ch:intro:motiv}, serves as a guideline to data-driven deployment. Furthermore, this thesis addressed a number of problems across the machine learning and control communities. Statistical models were proven to be immensely beneficial in developing a high-confidence model, from collected data of limited quality in the presence of noise and disturbances. Said approach is widely applicable in the areas of data analytics, robotics, controls, and beyond. 
+
+\section{Conclusion}
+
+This thesis demonstrated the feasibility of surrogate modeling for an optical fiber extrusion system, black-box system identification of its controllers, and developing a closed-loop simulation for the plant in production. The fiber drawing plant was modeled using a trained LSTM neural network, and the performance of which was evaluated both in time-domain using RMSE and in frequency-domain using power spectrum. Black-box systems for the controllers modulating input signals to the plant were developed. With the orders of the characteristic polynomials selected and the system parameters identified, an ensemble model of all subbatches within the fixed order was generated and validated. All developed models demonstrated that they are able to integrate into a closed-loop simulation to replicate real system behavior, achieving their purpose as a digital twin and a design tool for controllers in production. 
+
+
+\section{Future Work} \label{ch:concl:future_work}
+
+There are several areas of this work that warrant future research, elaborated in the subsections below. 
+
+\subsubsection{Neural Network}
+
+As discussed in Section \ref{ch:exp:data}, the current pre-processing pipeline restricts the training data by the upper and lower thresholds of the BFD. This approach places more emphasis on the steady-state region of the production data; as a consequence, the trained model learns and predicts the steady-state process dynamics with higher accuracy. Future iterations of this work could make use of the recorded flag in our data indicating whether the PID controller is engaged. By training on the data whenever the controller \emph{is} engaged, the learned model could observe more of the (potentially nonlinear) dynamics in which the BFD starts with different initial conditions and is brought to steady-state. Learning this insight could make the model more robust to disturbances in simulated dynamics. 
+
+The fundamental assumption of the neural network approach to black-box system modeling is that a neural network is complex enough to adequately model the underlying physics. However, having physical insight into the system's governing equation would be immensely helpful. Another approach commonly employed in literature is to use neural networks to model the residual dynamics not captured by the fundamental structure \cite{tossingbot_zeng_residual_physics}. One of the challenges I foresee, though, is obtaining a sufficiently elaborate physical model for the complex process dynamics in fiber extrusion. It is crucial that the analytical equations are able to adequately model most of the dynamics, so that the neural network is used for fine-tuning purposes only. There must be engineering judgment involved in regularizing the data-driven residual term, so to prevent it from dominating the terms in the rest of the equation. 
+
+\subsubsection{System Identification}
+
+Following the procedures outlined in \ref{ch:sysid:proc}, future research efforts could explore other data-based models. MATLAB's System Identification Toolbox also provides machinery to identify the Box-Jenkins (BJ) model, the NonLinear AutoRegressive model with eXogeneous input (NLARX), and many more. It may be worthwhile to experiment with each of their respective orders and compare the performance with existing results. 
+
+There are two prevalent metrics for system identification methodologies. The comparisons shown in Section \ref{ch:sysid:case} used the \emph{output error criterion}, in which system parameters are optimized for the lowest error in the final output, namely the NRMSE as defined in Equation \eqref{eqn:sysid_fit}. The other approach is to use the \emph{equation error criterion}, which resets the model to the data at every timestep and tunes the system parameters to minimize the one-step prediction errors over all timesteps of the simulation horizon \cite{equation_output_error, ljung1999system}. Since the equation error could be obtained via least squares regression, which is quadratic in the parameters, this convex parametrization is easier to compute and more accurate, but the identified system may be unstable due to accumulated errors over time. The output error criterion is a more robust methodology, but the nonconvex optimization involved in the computation makes it less favorable \cite{tedrake_manipulation_lec_error}. It would yield interesting results if a comparison study is conducted, or if a hybrid method is used, e.g. obtain an initial estimate of system parameters with the equation error approach, then fine-tune them with nonlinear optimization in the output error. 
+
+Despite the challenges addressed, I remain optimistic for the future of this ongoing research endeavor. 
